@@ -1,4 +1,4 @@
-## Documentation for JavaScript RAG Application Using LlamaIndex
+## JavaScript RAG Application Using LlamaIndex
 
 ### Overview
 

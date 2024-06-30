@@ -1,10 +1,37 @@
 import * as mod from "https://deno.land/std@0.213.0/dotenv/mod.ts";
-import { Document, VectorStoreIndex, SimpleDirectoryReader } from "npm:llamaindex"
+import { 
+    Document, 
+    VectorStoreIndex, 
+    SimpleDirectoryReader, 
+    RouterQueryEngine,
+    storageContextFromDefaults,
+    ContextChatEngine} from "npm:llamaindex";
+import { createAgent } from "./create_agent.js";
+    
 const keys = await mod.load({export:true}) // read API key from .env
 
-const documents = await new SimpleDirectoryReader().loadData({directoryPath: "./data"})
-const index = await VectorStoreIndex.fromDocuments(documents)
-const queryEngine = index.asQueryEngine()
+const documents1 = await new SimpleDirectoryReader().loadData({directoryPath: "./data"})
+const index1 = await VectorStoreIndex.fromDocuments(documents1)
+const queryEngine1 = index1.asQueryEngine()
+
+const documents2 = await new SimpleDirectoryReader().loadData({directoryPath: "./data"})
+const index2 = await VectorStoreIndex.fromDocuments(documents2)
+const queryEngine2 = index2.asQueryEngine()
+
+const queryEngine = await RouterQueryEngine.fromDefaults({
+    queryEngineTools: [
+        {
+            queryEngine: queryEngine1,
+            description: "Useful for questions about Dan Abramov"
+        },
+        {
+            queryEngine: queryEngine2,
+            description: "Useful for questions about the React library"
+        }
+    ]
+});
+
+const agent = createAgent(queryEngine);
 
 const handler = async (req) => {
     if(req.method == "POST") {

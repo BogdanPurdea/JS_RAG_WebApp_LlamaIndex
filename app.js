@@ -1,10 +1,17 @@
 import * as mod from "https://deno.land/std@0.213.0/dotenv/mod.ts";
-import { Document, VectorStoreIndex, SimpleDirectoryReader} from "npm:llamaindex";
+import { 
+    Document, 
+    VectorStoreIndex, 
+    SimpleDirectoryReader, 
+    RouterQueryEngine,
+    OpenAIAgent,
+    QueryEngineTool,
+    FunctionTool} from "npm:llamaindex";
 
 const keys = await mod.load({export: true}); //read API key from .env
 
-const documents = await new SimpleDirectoryReader().loadData({directoryPath: "./data"});
-const index = await VectorStoreIndex.fromDocuments(documents);
+const documents1 = await new SimpleDirectoryReader().loadData({directoryPath: "./data"});
+const index1 = await VectorStoreIndex.fromDocuments(documents1);
 // const llm = HuggingFaceLLM(
 //     context_window=4096,
 //     max_new_tokens=256,
@@ -20,7 +27,7 @@ const index = await VectorStoreIndex.fromDocuments(documents);
 // Settings.llm = llm;
 // Settings.chunk_size = 1024;
 
-const queryEngine = index.asQueryEngine();
+const queryEngine1 = index1.asQueryEngine();
 
 // const handler = (req) => {
 //     //Create a new response object
@@ -30,6 +37,61 @@ const queryEngine = index.asQueryEngine();
 // let server = Deno.serve({ port: 8001 }, handler);
 // const response = await fetch("http://localhost:8001");
 // await response.text();
+
+const documents2 = await new SimpleDirectoryReader().loadData({directoryPath: "./data2"});
+const index2 = await VectorStoreIndex.fromDocuments(documents2);
+const queryEngine2 = index2.asQueryEngine();
+
+const queryEngine = await RouterQueryEngine.fromDefaults({
+    queryEngineTools: [
+        {
+            queryEngine: queryEngine1,
+            description: "Useful for questions about Dan Abramov"
+        },
+        {
+            queryEngine: queryEngine2,
+            description: "Useful for questions about the React library"
+        }
+    ]
+});
+
+function sumNumbers({a, b}) {
+    return a + b;
+}
+
+const sumJSON = {
+    type: "object",
+    properties: {
+        a: {
+            type: "number",
+            description: "The first number"
+        },
+        b: {
+            type: "number",
+            description: "The second number"
+        }
+    },
+    required: ["a", "b"]  
+};
+
+const sumFunctionTool = new FunctionTool(sumNumbers, {
+    name: "sumNumbers",
+    description: "Use this function to sum two numbers",
+    parameters: sumJSON
+});
+
+const queryEngineTool = new QueryEngineTool({
+    queryEngine: queryEngine,
+    metadata: {
+        name: "react_and_dan_abramov_engine",
+        description: "A tool that can answer questions about Dan Abramov and the React library"
+    }
+});
+
+const agent = new OpenAIAgent({
+    tools: [queryEngineTool, sumFunctionTool],
+    verbose: true
+});
 
 const handler = async (req) => {
     if(req.method == "POST") {
@@ -49,7 +111,8 @@ const handler = async (req) => {
 }
 
 let server = Deno.serve({ port: 8002 }, handler);
-let data = {query: "How does the author feel about college?"};
+let data = {query: "How does Dan Abramov feel about college?"};
+let data2 = {query: "What is React?"};
 let response = await fetch("http://localhost:8002", {
     method: "POST",
     headers: {
@@ -57,7 +120,12 @@ let response = await fetch("http://localhost:8002", {
     },
     body: JSON.stringify(data) //Convert the JavaScript object to a JSON string
 });
+
+
 let responseObj = await response.json();
 console.log(responseObj.response);
 
-//await server.shutdown();
+let response1 = await agent.chat({message: "What is React? Use a tool."});
+console.log(response1.response.message.content);
+
+await server.shutdown();

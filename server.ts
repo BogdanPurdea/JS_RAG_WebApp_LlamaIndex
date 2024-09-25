@@ -14,7 +14,7 @@ const documents1 = await new SimpleDirectoryReader().loadData({directoryPath: ".
 const index1 = await VectorStoreIndex.fromDocuments(documents1)
 const queryEngine1 = index1.asQueryEngine()
 
-const documents2 = await new SimpleDirectoryReader().loadData({directoryPath: "./data"})
+const documents2 = await new SimpleDirectoryReader().loadData({directoryPath: "./data2"})
 const index2 = await VectorStoreIndex.fromDocuments(documents2)
 const queryEngine2 = index2.asQueryEngine()
 
